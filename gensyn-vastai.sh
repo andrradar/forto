@@ -43,13 +43,31 @@ curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_cl
             export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
             source ~/.bashrc
 
+            # Fix .bashrc PS1 if needed
+            if ! grep -q "case \\$- in" ~/.bashrc; then
+                echo -e "${BLUE}Patching .bashrc to prevent PS1 errors...${NC}"
+                echo -e '# ~/.bashrc: executed by bash(1) for non-login shells.\n\ncase $- in\n *i*) ;;\n *) return;;\nesac\n' | cat - ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
+            fi
+
             cd ~
             git clone https://github.com/gensyn-ai/rl-swarm
             cd ~/rl-swarm/modal-login
             npm install viem@2.22.6
             cd
 
-            echo -e "${RED}Vernis k tekstovomu gaydu i sledui sleduyushchim shagom!${NC}"
+            # Check for login creds
+            if [[ ! -f "$HOME/rl-swarm/swarm.pem" || ! -f "$HOME/rl-swarm/modal-login/temp-data/userData.json" || ! -f "$HOME/rl-swarm/modal-login/temp-data/userApiKey.json" ]]; then
+                echo -e "${YELLOW}Warning: You are missing one or more login credentials.${NC}"
+                echo -e "${CYAN}You will need to forward port 3000 and open http://localhost:3000 for login.${NC}"
+            fi
+
+            mkdir -p $HOME/gensyn-backup
+            cp $HOME/rl-swarm/swarm.pem $HOME/gensyn-backup/ 2>/dev/null
+            cp $HOME/rl-swarm/modal-login/temp-data/user*.json $HOME/gensyn-backup/ 2>/dev/null
+            echo -e "${GREEN}Login credentials backed up to ~/gensyn-backup (if present).${NC}"
+
+            echo -e "${YELLOW}To start your node, run:${NC}"
+            echo -e "${CYAN}cd ~/rl-swarm && source .venv/bin/activate && ./run_rl_swarm.sh${NC}"
             ;;
 
         2)
