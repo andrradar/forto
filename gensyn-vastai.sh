@@ -9,6 +9,13 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Ustanavlivaem rabochuyu direktoriyu v zavisimosti ot shablona
+if [ -d /workspace ]; then
+    WORKDIR=/workspace
+else
+    WORKDIR=$HOME
+fi
+
 # Proverka na curl
 if ! command -v curl &> /dev/null; then
     sudo apt update
@@ -44,30 +51,40 @@ curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_cl
             source ~/.bashrc
 
             # Fix .bashrc PS1 if needed
-            if ! grep -q "case \\$- in" ~/.bashrc; then
+            if ! grep -q "case \$- in" ~/.bashrc; then
                 echo -e "${BLUE}Patching .bashrc to prevent PS1 errors...${NC}"
                 echo -e '# ~/.bashrc: executed by bash(1) for non-login shells.\n\ncase $- in\n *i*) ;;\n *) return;;\nesac\n' | cat - ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
             fi
 
-            cd ~
+            cd $WORKDIR
             git clone https://github.com/gensyn-ai/rl-swarm
-            cd ~/rl-swarm/modal-login
+            cd $WORKDIR/rl-swarm
+
+            echo -e "${CYAN}Sozdaem Python virtual environment...${NC}"
+            python3 -m venv .venv
+            source .venv/bin/activate
+
+            echo -e "${CYAN}Ustanavlivaem npm zavisimosti...${NC}"
+            cd $WORKDIR/rl-swarm/modal-login
             npm install viem@2.22.6
             cd
 
             # Check for login creds
-            if [[ ! -f "$HOME/rl-swarm/swarm.pem" || ! -f "$HOME/rl-swarm/modal-login/temp-data/userData.json" || ! -f "$HOME/rl-swarm/modal-login/temp-data/userApiKey.json" ]]; then
+            if [[ ! -f "$WORKDIR/rl-swarm/swarm.pem" || ! -f "$WORKDIR/rl-swarm/modal-login/temp-data/userData.json" || ! -f "$WORKDIR/rl-swarm/modal-login/temp-data/userApiKey.json" ]]; then
                 echo -e "${YELLOW}Warning: You are missing one or more login credentials.${NC}"
-                echo -e "${CYAN}You will need to forward port 3000 and open http://localhost:3000 for login.${NC}"
+                echo -e "${CYAN}Open http://localhost:3000 after port forwarding to complete login.${NC}"
+                echo -e "${CYAN}Example: ssh -p <PORT> -L 3000:localhost:3000 -i <key> root@<ip>${NC}"
             fi
 
-            mkdir -p $HOME/gensyn-backup
-            cp $HOME/rl-swarm/swarm.pem $HOME/gensyn-backup/ 2>/dev/null
-            cp $HOME/rl-swarm/modal-login/temp-data/user*.json $HOME/gensyn-backup/ 2>/dev/null
-            echo -e "${GREEN}Login credentials backed up to ~/gensyn-backup (if present).${NC}"
+            mkdir -p $WORKDIR/gensyn-backup
+            cp $WORKDIR/rl-swarm/swarm.pem $WORKDIR/gensyn-backup/ 2>/dev/null
+            cp $WORKDIR/rl-swarm/modal-login/temp-data/user*.json $WORKDIR/gensyn-backup/ 2>/dev/null
+            echo -e "${GREEN}Login credentials backed up to $WORKDIR/gensyn-backup (if present).${NC}"
 
             echo -e "${YELLOW}To start your node, run:${NC}"
-            echo -e "${CYAN}cd ~/rl-swarm && source .venv/bin/activate && ./run_rl_swarm.sh${NC}"
+            echo -e "${CYAN}cd $WORKDIR/rl-swarm && source .venv/bin/activate && ./run_rl_swarm.sh${NC}"
+            echo -e "${RED}NOTE: Do NOT use GPUs that are not officially supported (e.g. RTX 5090).${NC}"
+            echo -e "${RED}Current working GPUs: 3090, 4070, 4090, A100, H100${NC}"
             ;;
 
         2)
@@ -82,8 +99,8 @@ curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_cl
         4)
             echo -e "${BLUE}Udalenie Gensyn node...${NC}"
 
-            if [ -d "$HOME/rl-swarm" ]; then
-                rm -rf $HOME/rl-swarm
+            if [ -d "$WORKDIR/rl-swarm" ]; then
+                rm -rf $WORKDIR/rl-swarm
                 echo -e "${GREEN}Direktoriya nody udalena.${NC}"
             else
                 echo -e "${RED}Direktoriya nody ne naydena.${NC}"
