@@ -78,29 +78,17 @@ case $choice in
         # Удаление конфликтующих файлов
         rm -f package-lock.json
         
-        # Установка основных недостающих пакетов
-        yarn add @babel/preset-env @babel/core
+        # Установка всех зависимостей одной командой для избежания конфликтов
+        yarn add @babel/preset-env @babel/core @wagmi/core@2.17.2 viem@2.29.2 encoding pino-pretty next@latest --ignore-engines
         
-        # Установка wagmi/core с правильной версией
-        yarn add @wagmi/core@2.17.2
+        # Установка react-native зависимостей (могут вызывать конфликты, но нужны для работы)
+        yarn add react-native@0.76.0 react-native-inappbrowser-reborn@3.7.0 react-native-mmkv@3.1.0 --ignore-engines --ignore-peer-deps
         
-        # Установка react-native зависимостей
-        yarn add react-native@0.76.0
-        yarn add react-native-inappbrowser-reborn@^3.7.0
-        yarn add react-native-mmkv@^3.1.0
+        # Переустановка всех зависимостей с игнорированием предупреждений
+        yarn install --ignore-engines --ignore-peer-deps
         
-        # Установка правильной версии viem (обновленной)
-        yarn add viem@2.29.2
-        
-        # Установка дополнительных пакетов для сборки
-        yarn add encoding pino-pretty
-        
-        # Обновление и переустановка всех зависимостей
-        yarn upgrade
-        yarn add next@latest
-        yarn install --force
-        
-        echo -e "${GREEN}Все зависимости установлены успешно!${NC}"
+        echo -e "${GREEN}Все зависимости установлены!${NC}"
+        echo -e "${YELLOW}Предупреждения о peer dependencies можно игнорировать - они не критичны для работы.${NC}"
         # =================================================================
         
         cd
@@ -119,14 +107,14 @@ case $choice in
             # Удаление конфликтующих файлов
             rm -f package-lock.json
             
-            # Обновление всех зависимостей
+            # Обновление всех зависимостей одной командой
             echo -e "${BLUE}Обновление зависимостей...${NC}"
-            yarn add @babel/preset-env @babel/core @wagmi/core@2.17.2 react-native@0.76.0 react-native-inappbrowser-reborn@^3.7.0 react-native-mmkv@^3.1.0 viem@2.29.2 encoding pino-pretty
-            yarn upgrade
-            yarn add next@latest
-            yarn install --force
+            yarn add @babel/preset-env @babel/core @wagmi/core@2.17.2 viem@2.29.2 encoding pino-pretty next@latest --ignore-engines
+            yarn add react-native@0.76.0 react-native-inappbrowser-reborn@3.7.0 react-native-mmkv@3.1.0 --ignore-engines --ignore-peer-deps
+            yarn install --ignore-engines --ignore-peer-deps
             
             echo -e "${GREEN}Зависимости обновлены!${NC}"
+            echo -e "${YELLOW}Предупреждения о peer dependencies можно игнорировать.${NC}"
             echo -e "${BLUE}Теперь можете перезапустить ноду.${NC}"
         else
             echo -e "${RED}Директория rl-swarm не найдена. Сначала установите ноду.${NC}"
