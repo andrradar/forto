@@ -93,6 +93,10 @@ case $choice in
         
         cd
         echo -e "${GREEN}Установка завершена! Теперь можете запускать ноду командой:${NC}"
+        echo -e "${CYAN}source ~/.bashrc${NC}"
+        echo -e "${CYAN}затем${NC}"
+        echo -e "${CYAN}screen -S gensyn${NC}"
+        echo -e "${CYAN}затем{NC}"
         echo -e "${CYAN}cd ~/rl-swarm${NC}"
         echo -e "${CYAN}python3 -m venv .venv${NC}"
         echo -e "${CYAN}source .venv/bin/activate${NC}"
