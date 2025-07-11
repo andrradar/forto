@@ -59,24 +59,11 @@ curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_cl
             git fetch origin
             git reset --hard origin/main
 
-            echo -e "${BLUE}Комментирование строки modal credentials...${NC}"
-            sed -i 's/^[[:space:]]*rm -r \$ROOT_DIR\/modal-login\/temp-data\/\*\.json/# &/' run_rl_swarm.sh
-            echo "Line processed:"
-            grep -n -A1 -B1 "modal-login.*temp-data" run_rl_swarm.sh
-            echo "Done!"
-
-            echo -e "${BLUE}Скачивание auto_restart.sh...${NC}"
-            wget https://raw.githubusercontent.com/andrradar/forto/refs/heads/main/auto_restart.sh
-            chmod +x auto_restart.sh
-            echo "auto_restart.sh ready in $(pwd)"
-
             # Заключительное сообщение
             echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
             echo -e "${GREEN}ВТОРАЯ НОДА УСТАНОВЛЕНА!${NC}"
-            echo -e "${YELLOW}Следующие шаги:${NC}"
-            echo -e "${CYAN}1. Скопируйте auth данные (опция 5)${NC}"
-            echo -e "${CYAN}2. Запустите в screen: screen -S gensyn1${NC}"
-            echo -e "${CYAN}3. cd rl-swarm1 && ./auto_restart.sh${NC}"
+            echo -e "${YELLOW}Установка завершена. Репозиторий готов к настройке.${NC}"
+            echo -e "${CYAN}Используйте другие опции меню для дальнейшей настройки.${NC}"
             echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
             echo -e "${GREEN}CRYPTO FORTOCHKA — вся крипта в одном месте!${NC}"
             echo -e "${CYAN}Наш Telegram https://t.me/cryptoforto${NC}"
