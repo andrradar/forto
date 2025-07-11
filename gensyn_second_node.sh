@@ -20,21 +20,21 @@ sleep 1
 curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_club.sh | bash
 
 # Меню
-    echo -e "${YELLOW}Выберите действие для ВТОРОЙ НОДЫ:${NC}"
+    echo -e "${YELLOW}Выберите действие для ВТОРОЙ НОДЫ (Python venv):${NC}"
     echo -e "${CYAN}1) Установка второй ноды (rl-swarm1)${NC}"
-    echo -e "${CYAN}2) Обновление второй ноды${NC}"
-    echo -e "${CYAN}3) Просмотр логов второй ноды${NC}"
-    echo -e "${CYAN}4) Рестарт второй ноды${NC}"
-    echo -e "${CYAN}5) Удаление второй ноды${NC}"
+    echo -e "${CYAN}2) Просмотр логов второй ноды${NC}"
+    echo -e "${CYAN}3) Остановить вторую ноду${NC}"
+    echo -e "${CYAN}4) Удаление второй ноды${NC}"
+    echo -e "${CYAN}5) Копирование auth данных${NC}"
+    echo -e "${CYAN}6) Команды для макросов${NC}"
 
     echo -e "${YELLOW}Введите номер:${NC} "
     read choice
 
     case $choice in
         1)
-            echo -e "${BLUE}Установка ВТОРОЙ ноды Gensyn (rl-swarm1)...${NC}"
-            echo -e "${YELLOW}ВНИМАНИЕ: Убедитесь, что первая нода работает в отдельной screen сессии!${NC}"
-
+            echo -e "${BLUE}Установка ВТОРОЙ ноды Gensyn (rl-swarm1) через Python venv...${NC}"
+            
             # Проверка существования первой ноды
             if [ ! -d "$HOME/rl-swarm" ]; then
                 echo -e "${RED}ОШИБКА: Первая нода (rl-swarm) не найдена! Установите сначала первую ноду.${NC}"
@@ -47,163 +47,63 @@ curl -s https://raw.githubusercontent.com/noxuspace/cryptofortochka/main/logo_cl
                 rm -rf $HOME/rl-swarm1
             fi
 
+            echo -e "${BLUE}Клонирование репозитория...${NC}"
             git clone https://github.com/gensyn-ai/rl-swarm/ rl-swarm1
             cd rl-swarm1
 
-            mv docker-compose.yaml docker-compose.yaml.old
+            echo -e "${BLUE}Настройка Python окружения...${NC}"
+            python3 -m venv .venv
+            source .venv/bin/activate
+            
+            echo -e "${BLUE}Обновление репозитория...${NC}"
+            git fetch origin
+            git reset --hard origin/main
 
-            cat << 'EOF' > docker-compose.yaml
-version: '3'
+            echo -e "${BLUE}Комментирование строки modal credentials...${NC}"
+            sed -i 's/^[[:space:]]*rm -r \$ROOT_DIR\/modal-login\/temp-data\/\*\.json/# &/' run_rl_swarm.sh
+            echo "Line processed:"
+            grep -n -A1 -B1 "modal-login.*temp-data" run_rl_swarm.sh
+            echo "Done!"
 
-services:
-  otel-collector-node2:
-    image: otel/opentelemetry-collector-contrib:0.120.0
-    ports:
-      - "4319:4317"  # OTLP gRPC (изменен порт для второй ноды)
-      - "4320:4318"  # OTLP HTTP (изменен порт для второй ноды)
-      - "55680:55679"  # Prometheus metrics (изменен порт для второй ноды)
-    environment:
-      - OTEL_LOG_LEVEL=DEBUG
-
-  swarm_node_2:
-    image: europe-docker.pkg.dev/gensyn-public-b7d9/public/rl-swarm:v0.0.2
-    command: ./run_hivemind_docker.sh
-    #runtime: nvidia  # Enables GPU support; remove if no GPU is available
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector-node2:4317
-      - PEER_MULTI_ADDRS=/ip4/38.101.215.13/tcp/30002/p2p/QmQ2gEXoPJg6iMBSUFWGzAabS2VhnzuS782Y637hGjfsRJ
-      - HOST_MULTI_ADDRS=/ip4/0.0.0.0/tcp/38332
-    ports:
-      - "38332:38332"  # Изменен порт P2P для второй ноды
-    depends_on:
-      - otel-collector-node2
-
-  fastapi_node2:
-    build:
-      context: .
-      dockerfile: Dockerfile.webserver
-    environment:
-      - OTEL_SERVICE_NAME=rlswarm-fastapi-node2
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector-node2:4317
-      - INITIAL_PEERS=/ip4/38.101.215.13/tcp/30002/p2p/QmQ2gEXoPJg6iMBSUFWGzAabS2VhnzuS782Y637hGjfsRJ
-    ports:
-      - "8178:8000"  # Изменен API порт для второй ноды (8178 вместо 8177)
-    depends_on:
-      - otel-collector-node2
-      - swarm_node_2
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/healthz"]
-      interval: 30s
-      retries: 3
-EOF
-
-            # Проверка доступности docker-compose
-            if command -v docker-compose &> /dev/null; then
-                COMPOSE_CMD="docker-compose"
-            elif docker compose version &> /dev/null; then
-                COMPOSE_CMD="docker compose"
-            else
-                echo -e "${RED}Docker Compose не найден! Устанавливаем...${NC}"
-                sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                sudo chmod +x /usr/local/bin/docker-compose
-                COMPOSE_CMD="docker-compose"
-            fi
-
-            $COMPOSE_CMD pull
-            $COMPOSE_CMD up -d
+            echo -e "${BLUE}Скачивание auto_restart.sh...${NC}"
+            wget https://raw.githubusercontent.com/andrradar/forto/refs/heads/main/auto_restart.sh
+            chmod +x auto_restart.sh
+            echo "auto_restart.sh ready in $(pwd)"
 
             # Заключительное сообщение
             echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
-            echo -e "${YELLOW}ВТОРАЯ НОДА УСТАНОВЛЕНА!${NC}"
-            echo -e "${YELLOW}Команда для проверки логов ВТОРОЙ ноды:${NC}"
-            echo "cd rl-swarm1 && $COMPOSE_CMD logs -f swarm_node_2"
-            echo -e "${CYAN}API второй ноды доступен на: http://localhost:8178${NC}"
-            echo -e "${CYAN}P2P порт второй ноды: 38332${NC}"
-            echo -e "${YELLOW}ВНИМАНИЕ: Настройте авторизацию на следующем шаге!${NC}"
+            echo -e "${GREEN}ВТОРАЯ НОДА УСТАНОВЛЕНА!${NC}"
+            echo -e "${YELLOW}Следующие шаги:${NC}"
+            echo -e "${CYAN}1. Скопируйте auth данные (опция 5)${NC}"
+            echo -e "${CYAN}2. Запустите в screen: screen -S gensyn1${NC}"
+            echo -e "${CYAN}3. cd rl-swarm1 && ./auto_restart.sh${NC}"
             echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
             echo -e "${GREEN}CRYPTO FORTOCHKA — вся крипта в одном месте!${NC}"
             echo -e "${CYAN}Наш Telegram https://t.me/cryptoforto${NC}"
-            sleep 2
-            $COMPOSE_CMD logs -f swarm_node_2
             ;;
 
         2)
-            echo -e "${BLUE}Обновление ВТОРОЙ ноды Gensyn...${NC}"
-            VER=rl-swarm:v0.0.2
-            cd rl-swarm1
-            
-            # Проверка доступности docker-compose
-            if command -v docker-compose &> /dev/null; then
-                COMPOSE_CMD="docker-compose"
-            elif docker compose version &> /dev/null; then
-                COMPOSE_CMD="docker compose"
-            else
-                COMPOSE_CMD="docker-compose"
-            fi
-            
-            sed -i "s#\(image: europe-docker.pkg.dev/gensyn-public-b7d9/public/\).*#\1$VER#g" docker-compose.yaml
-            $COMPOSE_CMD pull
-            $COMPOSE_CMD up -d
-            # Заключительное сообщение
-            echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
-            echo -e "${YELLOW}Команда для проверки логов ВТОРОЙ ноды:${NC}"
-            echo "cd rl-swarm1 && $COMPOSE_CMD logs -f swarm_node_2"
-            echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
-            echo -e "${GREEN}CRYPTO FORTOCHKA — вся крипта в одном месте!${NC}"
-            echo -e "${CYAN}Наш Telegram https://t.me/cryptoforto${NC}"
-            sleep 2
-            $COMPOSE_CMD logs -f swarm_node_2
+            echo -e "${BLUE}Для просмотра логов второй ноды используйте:${NC}"
+            echo -e "${CYAN}screen -r gensyn1${NC}"
+            echo -e "${YELLOW}Или если нода запущена в background:${NC}"
+            echo -e "${CYAN}tail -f /tmp/rlswarm_stdout.log${NC}"
             ;;
 
         3)
-            echo -e "${BLUE}Просмотр логов ВТОРОЙ ноды...${NC}"
-            cd rl-swarm1
-            
-            # Проверка доступности docker-compose
-            if command -v docker-compose &> /dev/null; then
-                COMPOSE_CMD="docker-compose"
-            elif docker compose version &> /dev/null; then
-                COMPOSE_CMD="docker compose"
-            else
-                COMPOSE_CMD="docker-compose"
-            fi
-            
-            $COMPOSE_CMD logs -f swarm_node_2
+            echo -e "${BLUE}Остановка второй ноды...${NC}"
+            echo -e "${YELLOW}Выберите способ:${NC}"
+            echo -e "${CYAN}1. Остановить screen сессию: screen -XS gensyn1 quit${NC}"
+            echo -e "${CYAN}2. Найти и убить процессы из rl-swarm1:${NC}"
+            echo "pkill -f rl-swarm1"
             ;;
-
+            
         4)
-            echo -e "${BLUE}Рестарт ВТОРОЙ ноды...${NC}"
-            cd rl-swarm1
-            
-            # Проверка доступности docker-compose
-            if command -v docker-compose &> /dev/null; then
-                COMPOSE_CMD="docker-compose"
-            elif docker compose version &> /dev/null; then
-                COMPOSE_CMD="docker compose"
-            else
-                COMPOSE_CMD="docker-compose"
-            fi
-            
-            $COMPOSE_CMD restart
-            $COMPOSE_CMD logs -f swarm_node_2
-            ;;
-            
-        5)
             echo -e "${BLUE}Удаление ВТОРОЙ ноды Gensyn...${NC}"
 
-            cd rl-swarm1
-            
-            # Проверка доступности docker-compose
-            if command -v docker-compose &> /dev/null; then
-                COMPOSE_CMD="docker-compose"
-            elif docker compose version &> /dev/null; then
-                COMPOSE_CMD="docker compose"
-            else
-                COMPOSE_CMD="docker-compose"
-            fi
-
-            # Остановка и удаление контейнера
-            $COMPOSE_CMD down -v
+            # Остановка процессов
+            echo -e "${YELLOW}Остановка процессов...${NC}"
+            pkill -f rl-swarm1 2>/dev/null || true
+            screen -XS gensyn1 quit 2>/dev/null || true
 
             # Удаление папки
             if [ -d "$HOME/rl-swarm1" ]; then
@@ -220,10 +120,42 @@ EOF
             echo -e "${PURPLE}-----------------------------------------------------------------------${NC}"
             echo -e "${GREEN}CRYPTO FORTOCHKA — вся крипта в одном месте!${NC}"
             echo -e "${CYAN}Наш Telegram https://t.me/cryptoforto${NC}"
-            sleep 1
+            ;;
+
+        5)
+            echo -e "${BLUE}Команды для копирования auth данных:${NC}"
+            echo ""
+            echo -e "${YELLOW}Вариант 1 - Из оригинального источника:${NC}"
+            echo "mkdir -p ~/rl-swarm1/modal-login/temp-data/ && cp /root/node_tools/projects/gensyn/\$(hostname)/gensyn-temp/userData.json ~/rl-swarm1/modal-login/temp-data/ && cp /root/node_tools/projects/gensyn/\$(hostname)/gensyn-temp/userApiKey.json ~/rl-swarm1/modal-login/temp-data/"
+            echo ""
+            echo -e "${YELLOW}Вариант 2 - Из первой ноды:${NC}"
+            echo "mkdir -p ~/rl-swarm1/modal-login/temp-data/ && cp ~/rl-swarm/modal-login/temp-data/userData.json ~/rl-swarm1/modal-login/temp-data/ && cp ~/rl-swarm/modal-login/temp-data/userApiKey.json ~/rl-swarm1/modal-login/temp-data/"
+            echo ""
+            echo -e "${YELLOW}Копирование swarm.pem (если нужен тот же peer ID):${NC}"
+            echo "cp ~/rl-swarm/swarm.pem ~/rl-swarm1/"
+            echo ""
+            echo -e "${GREEN}Скопируйте и выполните нужную команду${NC}"
+            ;;
+
+        6)
+            echo -e "${BLUE}Команды для макросов второй ноды:${NC}"
+            echo ""
+            echo -e "${YELLOW}0) Комментирование modal credentials:${NC}"
+            echo "cd ~/rl-swarm1 && sed -i 's/^[[:space:]]*rm -r \\\$ROOT_DIR\\/modal-login\\/temp-data\\/\\*\\.json/# &/' run_rl_swarm.sh && echo \"Line processed:\" && grep -n -A1 -B1 \"modal-login.*temp-data\" run_rl_swarm.sh && echo \"Done!\""
+            echo ""
+            echo -e "${YELLOW}1) Скачивание auto_restart.sh:${NC}"
+            echo "cd ~/rl-swarm1 && wget https://raw.githubusercontent.com/andrradar/forto/refs/heads/main/auto_restart.sh && chmod +x auto_restart.sh && echo \"auto_restart.sh ready in \$(pwd)\""
+            echo ""
+            echo -e "${YELLOW}2) Копирование auth данных:${NC}"
+            echo "mkdir -p ~/rl-swarm1/modal-login/temp-data/ && cp /root/node_tools/projects/gensyn/\$(hostname)/gensyn-temp/userData.json ~/rl-swarm1/modal-login/temp-data/ && cp /root/node_tools/projects/gensyn/\$(hostname)/gensyn-temp/userApiKey.json ~/rl-swarm1/modal-login/temp-data/ && cp /root/node_tools/projects/gensyn/\$(hostname)/gensyn-temp/swarm.pem ~/rl-swarm1/"
+            echo ""
+            echo -e "${YELLOW}3) Настройка окружения:${NC}"
+            echo "cd rl-swarm1 && python3 -m venv .venv && source .venv/bin/activate && git fetch origin && git reset --hard origin/main"
+            echo ""
+            echo -e "${GREEN}Для screen макроса используйте эти команды по порядку${NC}"
             ;;
 
         *)
-            echo -e "${RED}Неверный выбор. Пожалуйста, введите номер от 1 до 5!${NC}"
+            echo -e "${RED}Неверный выбор. Пожалуйста, введите номер от 1 до 6!${NC}"
             ;;
     esac
